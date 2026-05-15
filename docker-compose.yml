@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: usersdb
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: usersdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - usersdb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d usersdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    container_name: users-api
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: secret
+      DB_NAME: usersdb
+      DB_SSLMODE: disable
+      DB_TIMEZONE: America/Sao_Paulo
+      HTTP_PORT: "8081"
+      HTTP_ALLOWED_ORIGINS: "*"
+      ADMIN_EMAIL: admin@garage.com
+      ADMIN_PASSWORD: Admin@123
+      ADMIN_DOCUMENT: "00000000000"
+      ENV: development
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+
+volumes:
+  usersdb_data:
