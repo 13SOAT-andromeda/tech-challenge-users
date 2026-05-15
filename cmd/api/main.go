@@ -10,6 +10,7 @@ import (
 	httpAdapter "tech-challenge-users/internal/adapter/http"
 	"tech-challenge-users/internal/adapter/http/handlers"
 	"tech-challenge-users/internal/application/services"
+	// future modules will import additional services here
 )
 
 func main() {
@@ -28,10 +29,12 @@ func main() {
 	personRepo := repository.NewPersonRepository(db)
 	userRepo := repository.NewUserRepository(db)
 	employeeRepo := repository.NewEmployeeRepository(db)
+	customerRepo := repository.NewCustomerRepository(db)
 	transactor := repository.NewTransactor(db)
 
 	// Services
 	userService := services.NewUserService(transactor, personRepo, userRepo, employeeRepo)
+	customerService := services.NewCustomerService(transactor, personRepo, customerRepo)
 
 	// Bootstrap admin user (idempotent)
 	userService.CreateAdminUser(services.AdminConfig{
@@ -43,9 +46,10 @@ func main() {
 	// Handlers
 	userHandler := handlers.NewUserHandler(userService)
 	internalUserHandler := handlers.NewInternalUserHandler(userService)
+	customerHandler := handlers.NewCustomerHandler(customerService)
 
 	// Router
-	router := httpAdapter.NewRouter(userHandler, internalUserHandler)
+	router := httpAdapter.NewRouter(userHandler, internalUserHandler, customerHandler)
 	router.Setup()
 
 	addr := ":" + cfg.HTTPPort

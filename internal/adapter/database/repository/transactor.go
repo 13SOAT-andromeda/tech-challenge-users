@@ -20,6 +20,7 @@ func (t *transactor) WithinTransaction(fn func(repos ports.Repositories) error) 
 			Person:   NewPersonRepository(tx),
 			User:     NewUserRepository(tx),
 			Employee: NewEmployeeRepository(tx),
+			Customer: NewCustomerRepository(tx),
 		})
 	})
 }

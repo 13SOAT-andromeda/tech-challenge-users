@@ -112,6 +112,7 @@ type mockTransactor struct {
 	personRepo   ports.PersonRepository
 	userRepo     ports.UserRepository
 	employeeRepo ports.EmployeeRepository
+	customerRepo ports.CustomerRepository
 }
 
 func (t *mockTransactor) WithinTransaction(fn func(repos ports.Repositories) error) error {
@@ -119,6 +120,7 @@ func (t *mockTransactor) WithinTransaction(fn func(repos ports.Repositories) err
 		Person:   t.personRepo,
 		User:     t.userRepo,
 		Employee: t.employeeRepo,
+		Customer: t.customerRepo,
 	})
 }
 

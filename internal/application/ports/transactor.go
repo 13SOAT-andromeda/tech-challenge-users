@@ -4,6 +4,7 @@ type Repositories struct {
 	Person   PersonRepository
 	User     UserRepository
 	Employee EmployeeRepository
+	Customer CustomerRepository
 }
 
 type Transactor interface {
