@@ -8,14 +8,20 @@ import (
 )
 
 type Router struct {
-	engine *gin.Engine
+	engine              *gin.Engine
+	userHandler         *handlers.UserHandler
+	internalUserHandler *handlers.InternalUserHandler
 }
 
-func NewRouter() *Router {
+func NewRouter(userHandler *handlers.UserHandler, internalUserHandler *handlers.InternalUserHandler) *Router {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
 
-	return &Router{engine: engine}
+	return &Router{
+		engine:              engine,
+		userHandler:         userHandler,
+		internalUserHandler: internalUserHandler,
+	}
 }
 
 func (r *Router) Setup() {
@@ -38,8 +44,16 @@ func (r *Router) Engine() *gin.Engine {
 	return r.engine
 }
 
-// setupInternalRoutes wires /internal/* handlers (populated by module-users).
-func (r *Router) setupInternalRoutes(_ *gin.RouterGroup) {}
+func (r *Router) setupInternalRoutes(g *gin.RouterGroup) {
+	g.GET("/users/by-document", r.internalUserHandler.GetByDocument)
+}
 
-// setupUsersRoutes wires /users/* handlers (populated by each domain module).
-func (r *Router) setupUsersRoutes(_ *gin.RouterGroup) {}
+func (r *Router) setupUsersRoutes(g *gin.RouterGroup) {
+	adminOrAttendant := middlewares.RoleRequired("administrator", "attendant")
+
+	g.POST("", adminOrAttendant, r.userHandler.Create)
+	g.GET("", adminOrAttendant, r.userHandler.List)
+	g.GET("/:id", adminOrAttendant, r.userHandler.GetByID)
+	g.PUT("/:id", adminOrAttendant, r.userHandler.Update)
+	g.DELETE("/:id", adminOrAttendant, r.userHandler.Delete)
+}

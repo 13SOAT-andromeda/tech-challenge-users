@@ -6,7 +6,10 @@ import (
 	"tech-challenge-users/internal/adapter/config"
 	"tech-challenge-users/internal/adapter/database"
 	"tech-challenge-users/internal/adapter/database/migrations"
+	"tech-challenge-users/internal/adapter/database/repository"
 	httpAdapter "tech-challenge-users/internal/adapter/http"
+	"tech-challenge-users/internal/adapter/http/handlers"
+	"tech-challenge-users/internal/application/services"
 )
 
 func main() {
@@ -21,7 +24,28 @@ func main() {
 		log.Fatalf("failed to run migrations: %v", err)
 	}
 
-	router := httpAdapter.NewRouter()
+	// Repositories
+	personRepo := repository.NewPersonRepository(db)
+	userRepo := repository.NewUserRepository(db)
+	employeeRepo := repository.NewEmployeeRepository(db)
+	transactor := repository.NewTransactor(db)
+
+	// Services
+	userService := services.NewUserService(transactor, personRepo, userRepo, employeeRepo)
+
+	// Bootstrap admin user (idempotent)
+	userService.CreateAdminUser(services.AdminConfig{
+		Email:    cfg.AdminEmail,
+		Password: cfg.AdminPassword,
+		Document: cfg.AdminDocument,
+	})
+
+	// Handlers
+	userHandler := handlers.NewUserHandler(userService)
+	internalUserHandler := handlers.NewInternalUserHandler(userService)
+
+	// Router
+	router := httpAdapter.NewRouter(userHandler, internalUserHandler)
 	router.Setup()
 
 	addr := ":" + cfg.HTTPPort
