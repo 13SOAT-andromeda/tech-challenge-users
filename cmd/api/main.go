@@ -5,6 +5,7 @@ import (
 
 	"tech-challenge-users/internal/adapter/config"
 	"tech-challenge-users/internal/adapter/database"
+	"tech-challenge-users/internal/adapter/database/migrations"
 	httpAdapter "tech-challenge-users/internal/adapter/http"
 )
 
@@ -15,7 +16,10 @@ func main() {
 	}
 
 	db := database.Connect(cfg)
-	_ = db // will be wired to repositories in subsequent modules
+
+	if err := migrations.RunMigrations(db); err != nil {
+		log.Fatalf("failed to run migrations: %v", err)
+	}
 
 	router := httpAdapter.NewRouter()
 	router.Setup()
