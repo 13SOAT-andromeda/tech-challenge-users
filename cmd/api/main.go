@@ -10,7 +10,7 @@ import (
 	httpAdapter "tech-challenge-users/internal/adapter/http"
 	"tech-challenge-users/internal/adapter/http/handlers"
 	"tech-challenge-users/internal/application/services"
-	// future modules will import additional services here
+	"tech-challenge-users/internal/application/usecases"
 )
 
 func main() {
@@ -31,12 +31,14 @@ func main() {
 	employeeRepo := repository.NewEmployeeRepository(db)
 	customerRepo := repository.NewCustomerRepository(db)
 	vehicleRepo := repository.NewVehicleRepository(db)
+	cvRepo := repository.NewCustomerVehicleRepository(db)
 	transactor := repository.NewTransactor(db)
 
-	// Services
+	// Services / Use cases
 	userService := services.NewUserService(transactor, personRepo, userRepo, employeeRepo)
 	customerService := services.NewCustomerService(transactor, personRepo, customerRepo)
 	vehicleService := services.NewVehicleService(vehicleRepo)
+	customerUseCase := usecases.NewCustomerUseCase(customerRepo, vehicleRepo, cvRepo)
 
 	// Bootstrap admin user (idempotent)
 	userService.CreateAdminUser(services.AdminConfig{
@@ -50,9 +52,10 @@ func main() {
 	internalUserHandler := handlers.NewInternalUserHandler(userService)
 	customerHandler := handlers.NewCustomerHandler(customerService)
 	vehicleHandler := handlers.NewVehicleHandler(vehicleService)
+	customerVehicleHandler := handlers.NewCustomerVehicleHandler(customerUseCase)
 
 	// Router
-	router := httpAdapter.NewRouter(userHandler, internalUserHandler, customerHandler, vehicleHandler)
+	router := httpAdapter.NewRouter(userHandler, internalUserHandler, customerHandler, vehicleHandler, customerVehicleHandler)
 	router.Setup()
 
 	addr := ":" + cfg.HTTPPort

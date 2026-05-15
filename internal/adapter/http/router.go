@@ -8,11 +8,12 @@ import (
 )
 
 type Router struct {
-	engine              *gin.Engine
-	userHandler         *handlers.UserHandler
-	internalUserHandler *handlers.InternalUserHandler
-	customerHandler     *handlers.CustomerHandler
-	vehicleHandler      *handlers.VehicleHandler
+	engine                  *gin.Engine
+	userHandler             *handlers.UserHandler
+	internalUserHandler     *handlers.InternalUserHandler
+	customerHandler         *handlers.CustomerHandler
+	vehicleHandler          *handlers.VehicleHandler
+	customerVehicleHandler  *handlers.CustomerVehicleHandler
 }
 
 func NewRouter(
@@ -20,16 +21,18 @@ func NewRouter(
 	internalUserHandler *handlers.InternalUserHandler,
 	customerHandler *handlers.CustomerHandler,
 	vehicleHandler *handlers.VehicleHandler,
+	customerVehicleHandler *handlers.CustomerVehicleHandler,
 ) *Router {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
 
 	return &Router{
-		engine:              engine,
-		userHandler:         userHandler,
-		internalUserHandler: internalUserHandler,
-		customerHandler:     customerHandler,
-		vehicleHandler:      vehicleHandler,
+		engine:                 engine,
+		userHandler:            userHandler,
+		internalUserHandler:    internalUserHandler,
+		customerHandler:        customerHandler,
+		vehicleHandler:         vehicleHandler,
+		customerVehicleHandler: customerVehicleHandler,
 	}
 }
 
@@ -65,6 +68,9 @@ func (r *Router) setupUsersRoutes(g *gin.RouterGroup) {
 	customers.GET("/:id", r.customerHandler.GetByID)
 	customers.PUT("/:id", r.customerHandler.Update)
 	customers.DELETE("/:id", r.customerHandler.Delete)
+	customers.GET("/:id/vehicles", r.customerVehicleHandler.List)
+	customers.POST("/:id/vehicles/:vehicleId", r.customerVehicleHandler.Add)
+	customers.DELETE("/:id/vehicles/:vehicleId", r.customerVehicleHandler.Remove)
 
 	vehicles := g.Group("/vehicles")
 	vehicles.Use(adminAttendantMechanic)
