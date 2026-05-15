@@ -8,12 +8,13 @@ import (
 )
 
 type Router struct {
-	engine                  *gin.Engine
-	userHandler             *handlers.UserHandler
-	internalUserHandler     *handlers.InternalUserHandler
-	customerHandler         *handlers.CustomerHandler
-	vehicleHandler          *handlers.VehicleHandler
-	customerVehicleHandler  *handlers.CustomerVehicleHandler
+	engine                 *gin.Engine
+	userHandler            *handlers.UserHandler
+	internalUserHandler    *handlers.InternalUserHandler
+	customerHandler        *handlers.CustomerHandler
+	vehicleHandler         *handlers.VehicleHandler
+	customerVehicleHandler *handlers.CustomerVehicleHandler
+	companyHandler         *handlers.CompanyHandler
 }
 
 func NewRouter(
@@ -22,6 +23,7 @@ func NewRouter(
 	customerHandler *handlers.CustomerHandler,
 	vehicleHandler *handlers.VehicleHandler,
 	customerVehicleHandler *handlers.CustomerVehicleHandler,
+	companyHandler *handlers.CompanyHandler,
 ) *Router {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
@@ -33,6 +35,7 @@ func NewRouter(
 		customerHandler:        customerHandler,
 		vehicleHandler:         vehicleHandler,
 		customerVehicleHandler: customerVehicleHandler,
+		companyHandler:         companyHandler,
 	}
 }
 
@@ -79,6 +82,14 @@ func (r *Router) setupUsersRoutes(g *gin.RouterGroup) {
 	vehicles.GET("/:id", r.vehicleHandler.GetByID)
 	vehicles.PUT("/:id", r.vehicleHandler.Update)
 	vehicles.DELETE("/:id", r.vehicleHandler.Delete)
+
+	adminOnly := middlewares.RoleRequired("administrator")
+	companies := g.Group("/companies")
+	companies.Use(adminOnly)
+	companies.POST("", r.companyHandler.Create)
+	companies.GET("/:id", r.companyHandler.GetByID)
+	companies.PUT("/:id", r.companyHandler.Update)
+	companies.DELETE("/:id", r.companyHandler.Delete)
 
 	// Dynamic :id routes
 	g.POST("", adminOrAttendant, r.userHandler.Create)
