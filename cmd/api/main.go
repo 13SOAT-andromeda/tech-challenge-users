@@ -30,11 +30,13 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	employeeRepo := repository.NewEmployeeRepository(db)
 	customerRepo := repository.NewCustomerRepository(db)
+	vehicleRepo := repository.NewVehicleRepository(db)
 	transactor := repository.NewTransactor(db)
 
 	// Services
 	userService := services.NewUserService(transactor, personRepo, userRepo, employeeRepo)
 	customerService := services.NewCustomerService(transactor, personRepo, customerRepo)
+	vehicleService := services.NewVehicleService(vehicleRepo)
 
 	// Bootstrap admin user (idempotent)
 	userService.CreateAdminUser(services.AdminConfig{
@@ -47,9 +49,10 @@ func main() {
 	userHandler := handlers.NewUserHandler(userService)
 	internalUserHandler := handlers.NewInternalUserHandler(userService)
 	customerHandler := handlers.NewCustomerHandler(customerService)
+	vehicleHandler := handlers.NewVehicleHandler(vehicleService)
 
 	// Router
-	router := httpAdapter.NewRouter(userHandler, internalUserHandler, customerHandler)
+	router := httpAdapter.NewRouter(userHandler, internalUserHandler, customerHandler, vehicleHandler)
 	router.Setup()
 
 	addr := ":" + cfg.HTTPPort

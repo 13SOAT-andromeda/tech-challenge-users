@@ -12,12 +12,14 @@ type Router struct {
 	userHandler         *handlers.UserHandler
 	internalUserHandler *handlers.InternalUserHandler
 	customerHandler     *handlers.CustomerHandler
+	vehicleHandler      *handlers.VehicleHandler
 }
 
 func NewRouter(
 	userHandler *handlers.UserHandler,
 	internalUserHandler *handlers.InternalUserHandler,
 	customerHandler *handlers.CustomerHandler,
+	vehicleHandler *handlers.VehicleHandler,
 ) *Router {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
@@ -27,6 +29,7 @@ func NewRouter(
 		userHandler:         userHandler,
 		internalUserHandler: internalUserHandler,
 		customerHandler:     customerHandler,
+		vehicleHandler:      vehicleHandler,
 	}
 }
 
@@ -51,8 +54,10 @@ func (r *Router) setupInternalRoutes(g *gin.RouterGroup) {
 
 func (r *Router) setupUsersRoutes(g *gin.RouterGroup) {
 	adminOrAttendant := middlewares.RoleRequired("administrator", "attendant")
+	adminAttendantMechanic := middlewares.RoleRequired("administrator", "attendant", "mechanic")
 
 	// Static sub-paths BEFORE dynamic :id
+
 	customers := g.Group("/customers")
 	customers.Use(adminOrAttendant)
 	customers.POST("", r.customerHandler.Create)
@@ -60,6 +65,14 @@ func (r *Router) setupUsersRoutes(g *gin.RouterGroup) {
 	customers.GET("/:id", r.customerHandler.GetByID)
 	customers.PUT("/:id", r.customerHandler.Update)
 	customers.DELETE("/:id", r.customerHandler.Delete)
+
+	vehicles := g.Group("/vehicles")
+	vehicles.Use(adminAttendantMechanic)
+	vehicles.POST("", r.vehicleHandler.Create)
+	vehicles.GET("", r.vehicleHandler.List)
+	vehicles.GET("/:id", r.vehicleHandler.GetByID)
+	vehicles.PUT("/:id", r.vehicleHandler.Update)
+	vehicles.DELETE("/:id", r.vehicleHandler.Delete)
 
 	// Dynamic :id routes
 	g.POST("", adminOrAttendant, r.userHandler.Create)
