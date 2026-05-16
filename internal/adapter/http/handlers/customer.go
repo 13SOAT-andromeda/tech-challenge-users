@@ -12,6 +12,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const errInvalidID = "invalid id"
+
 type CustomerHandler struct {
 	svc *services.CustomerService
 }
@@ -139,7 +141,7 @@ func (h *CustomerHandler) List(c *gin.Context) {
 func (h *CustomerHandler) GetByID(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidID})
 		return
 	}
 
@@ -155,7 +157,7 @@ func (h *CustomerHandler) GetByID(c *gin.Context) {
 func (h *CustomerHandler) Update(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidID})
 		return
 	}
 
@@ -195,7 +197,7 @@ func (h *CustomerHandler) Update(c *gin.Context) {
 func (h *CustomerHandler) Delete(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidID})
 		return
 	}
 

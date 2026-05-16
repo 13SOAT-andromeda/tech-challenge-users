@@ -78,6 +78,26 @@ func (s *VehicleService) ListVehicles(filters ports.VehicleFilters) ([]domain.Ve
 	return s.vehicleRepo.FindAll(filters)
 }
 
+func (s *VehicleService) applyPlateUpdate(vehicle *domain.Vehicle, newPlate string) error {
+	plate, err := domain.NewPlate(newPlate)
+	if err != nil {
+		return err
+	}
+	normalized := plate.String()
+	if normalized == vehicle.Plate {
+		return nil
+	}
+	existing, err := s.vehicleRepo.FindByPlate(normalized)
+	if err != nil {
+		return err
+	}
+	if existing != nil {
+		return ErrPlateAlreadyExists
+	}
+	vehicle.Plate = normalized
+	return nil
+}
+
 func (s *VehicleService) UpdateVehicle(id int64, input UpdateVehicleInput) (*domain.Vehicle, error) {
 	vehicle, err := s.vehicleRepo.FindByID(id)
 	if err != nil {
@@ -88,21 +108,9 @@ func (s *VehicleService) UpdateVehicle(id int64, input UpdateVehicleInput) (*dom
 	}
 
 	if input.Plate != nil {
-		plate, err := domain.NewPlate(*input.Plate)
-		if err != nil {
+		if err := s.applyPlateUpdate(vehicle, *input.Plate); err != nil {
 			return nil, err
 		}
-		normalized := plate.String()
-		if normalized != vehicle.Plate {
-			existing, err := s.vehicleRepo.FindByPlate(normalized)
-			if err != nil {
-				return nil, err
-			}
-			if existing != nil {
-				return nil, ErrPlateAlreadyExists
-			}
-		}
-		vehicle.Plate = normalized
 	}
 	if input.Name != nil {
 		vehicle.Name = *input.Name

@@ -51,6 +51,60 @@ func NewCustomerService(
 	}
 }
 
+func (s *CustomerService) createCustomerInTx(repos ports.Repositories, input CreateCustomerInput) (CustomerOutput, error) {
+	existing, err := repos.Person.GetByEmail(input.Email)
+	if err != nil {
+		return CustomerOutput{}, err
+	}
+	if existing != nil {
+		return CustomerOutput{}, ErrEmailAlreadyExists
+	}
+
+	existingDoc, err := repos.Person.GetByDocument(input.Document)
+	if err != nil {
+		return CustomerOutput{}, err
+	}
+	if existingDoc != nil {
+		return CustomerOutput{}, ErrDocumentAlreadyExists
+	}
+
+	person := domain.Person{
+		Name:     input.Name,
+		Email:    input.Email,
+		Contact:  input.Contact,
+		Document: input.Document,
+		IsActive: true,
+		Address:  input.Address,
+	}
+	if err := repos.Person.Create(&person); err != nil {
+		return CustomerOutput{}, err
+	}
+
+	hash, err := encryption.Hash(input.Password)
+	if err != nil {
+		return CustomerOutput{}, err
+	}
+
+	user := domain.User{
+		Password: hash,
+		Role:     domain.RoleCustomer,
+		PersonID: person.ID,
+	}
+	if err := repos.User.Create(&user); err != nil {
+		return CustomerOutput{}, err
+	}
+
+	customer := domain.Customer{
+		Type:     input.Type,
+		PersonID: person.ID,
+	}
+	if err := repos.Customer.Create(&customer); err != nil {
+		return CustomerOutput{}, err
+	}
+
+	return CustomerOutput{Customer: customer, Person: person}, nil
+}
+
 func (s *CustomerService) CreateCustomer(input CreateCustomerInput) (*CustomerOutput, error) {
 	if err := domain.ValidateCustomerType(input.Type); err != nil {
 		return nil, err
@@ -64,58 +118,9 @@ func (s *CustomerService) CreateCustomer(input CreateCustomerInput) (*CustomerOu
 
 	var output CustomerOutput
 	err := s.transactor.WithinTransaction(func(repos ports.Repositories) error {
-		existing, err := repos.Person.GetByEmail(input.Email)
-		if err != nil {
-			return err
-		}
-		if existing != nil {
-			return ErrEmailAlreadyExists
-		}
-
-		existingDoc, err := repos.Person.GetByDocument(input.Document)
-		if err != nil {
-			return err
-		}
-		if existingDoc != nil {
-			return ErrDocumentAlreadyExists
-		}
-
-		person := domain.Person{
-			Name:     input.Name,
-			Email:    input.Email,
-			Contact:  input.Contact,
-			Document: input.Document,
-			IsActive: true,
-			Address:  input.Address,
-		}
-		if err := repos.Person.Create(&person); err != nil {
-			return err
-		}
-
-		hash, err := encryption.Hash(input.Password)
-		if err != nil {
-			return err
-		}
-
-		user := domain.User{
-			Password: hash,
-			Role:     domain.RoleCustomer,
-			PersonID: person.ID,
-		}
-		if err := repos.User.Create(&user); err != nil {
-			return err
-		}
-
-		customer := domain.Customer{
-			Type:     input.Type,
-			PersonID: person.ID,
-		}
-		if err := repos.Customer.Create(&customer); err != nil {
-			return err
-		}
-
-		output = CustomerOutput{Customer: customer, Person: person}
-		return nil
+		var err error
+		output, err = s.createCustomerInTx(repos, input)
+		return err
 	})
 	if err != nil {
 		return nil, err
@@ -160,6 +165,26 @@ func (s *CustomerService) ListCustomers(filters ports.CustomerFilters) ([]Custom
 	return outputs, nil
 }
 
+func (s *CustomerService) applyEmailUpdate(person *domain.Person, email string) error {
+	existing, err := s.personRepo.GetByEmail(email)
+	if err != nil {
+		return err
+	}
+	if existing != nil && existing.ID != person.ID {
+		return ErrEmailAlreadyExists
+	}
+	person.Email = email
+	return nil
+}
+
+func (s *CustomerService) applyTypeUpdate(customer *domain.Customer, t string) error {
+	if err := domain.ValidateCustomerType(t); err != nil {
+		return err
+	}
+	customer.Type = t
+	return s.customerRepo.Update(customer)
+}
+
 func (s *CustomerService) UpdateCustomer(id int64, input UpdateCustomerInput) (*CustomerOutput, error) {
 	customer, err := s.customerRepo.FindByID(id)
 	if err != nil {
@@ -178,14 +203,9 @@ func (s *CustomerService) UpdateCustomer(id int64, input UpdateCustomerInput) (*
 		person.Name = *input.Name
 	}
 	if input.Email != nil {
-		existing, err := s.personRepo.GetByEmail(*input.Email)
-		if err != nil {
+		if err := s.applyEmailUpdate(person, *input.Email); err != nil {
 			return nil, err
 		}
-		if existing != nil && existing.ID != person.ID {
-			return nil, ErrEmailAlreadyExists
-		}
-		person.Email = *input.Email
 	}
 	if input.Contact != nil {
 		person.Contact = *input.Contact
@@ -198,11 +218,7 @@ func (s *CustomerService) UpdateCustomer(id int64, input UpdateCustomerInput) (*
 	}
 
 	if input.Type != nil {
-		if err := domain.ValidateCustomerType(*input.Type); err != nil {
-			return nil, err
-		}
-		customer.Type = *input.Type
-		if err := s.customerRepo.Update(customer); err != nil {
+		if err := s.applyTypeUpdate(customer, *input.Type); err != nil {
 			return nil, err
 		}
 	}
