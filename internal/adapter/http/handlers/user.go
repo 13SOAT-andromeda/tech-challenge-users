@@ -61,13 +61,13 @@ type addressResponse struct {
 }
 
 type personResponse struct {
-	ID           int64           `json:"id"`
-	Name         string          `json:"name"`
-	Email        string          `json:"email"`
-	Contact      string          `json:"contact,omitempty"`
-	Document     string          `json:"document"`
-	IsActive     bool            `json:"is_active"`
-	Address      addressResponse `json:"address,omitempty"`
+	ID       int64           `json:"id"`
+	Name     string          `json:"name"`
+	Email    string          `json:"email"`
+	Contact  string          `json:"contact,omitempty"`
+	Document string          `json:"document"`
+	IsActive bool            `json:"is_active"`
+	Address  addressResponse `json:"address,omitempty"`
 }
 
 type employeeResponse struct {
@@ -182,7 +182,7 @@ func (h *UserHandler) List(c *gin.Context) {
 func (h *UserHandler) GetByID(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidID})
 		return
 	}
 
@@ -198,7 +198,7 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 func (h *UserHandler) Update(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidID})
 		return
 	}
 
@@ -242,7 +242,7 @@ func (h *UserHandler) Update(c *gin.Context) {
 func (h *UserHandler) Delete(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidID})
 		return
 	}
 

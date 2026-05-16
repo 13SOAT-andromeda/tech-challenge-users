@@ -114,7 +114,7 @@ func (h *VehicleHandler) List(c *gin.Context) {
 func (h *VehicleHandler) GetByID(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidID})
 		return
 	}
 
@@ -133,7 +133,7 @@ func (h *VehicleHandler) GetByID(c *gin.Context) {
 func (h *VehicleHandler) Update(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidID})
 		return
 	}
 
@@ -164,7 +164,7 @@ func (h *VehicleHandler) Update(c *gin.Context) {
 func (h *VehicleHandler) Delete(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidID})
 		return
 	}
 
