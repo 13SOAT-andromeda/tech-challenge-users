@@ -67,6 +67,64 @@ func NewUserService(
 	}
 }
 
+func (s *UserService) createUserInTx(repos ports.Repositories, input CreateUserInput) (UserOutput, error) {
+	existing, err := repos.Person.GetByEmail(input.Email)
+	if err != nil {
+		return UserOutput{}, err
+	}
+	if existing != nil {
+		return UserOutput{}, ErrEmailAlreadyExists
+	}
+
+	existingDoc, err := repos.Person.GetByDocument(input.Document)
+	if err != nil {
+		return UserOutput{}, err
+	}
+	if existingDoc != nil {
+		return UserOutput{}, ErrDocumentAlreadyExists
+	}
+
+	person := domain.Person{
+		Name:     input.Name,
+		Email:    input.Email,
+		Contact:  input.Contact,
+		Document: input.Document,
+		IsActive: true,
+		Address:  input.Address,
+	}
+	if err := repos.Person.Create(&person); err != nil {
+		return UserOutput{}, err
+	}
+
+	hash, err := encryption.Hash(input.Password)
+	if err != nil {
+		return UserOutput{}, err
+	}
+
+	user := domain.User{
+		Password: hash,
+		Role:     input.Role,
+		PersonID: person.ID,
+	}
+	if err := repos.User.Create(&user); err != nil {
+		return UserOutput{}, err
+	}
+
+	var employee *domain.Employee
+	if input.Role != domain.RoleCustomer {
+		emp := domain.Employee{
+			Position: input.Position,
+			PersonID: person.ID,
+		}
+		if err := repos.Employee.Create(&emp); err != nil {
+			return UserOutput{}, err
+		}
+		employee = &emp
+	}
+
+	return UserOutput{User: user, Person: person, Employee: employee}, nil
+}
+
 func (s *UserService) CreateUser(input CreateUserInput) (*UserOutput, error) {
 	if _, err := domain.NewPassword(input.Password); err != nil {
 		return nil, err
@@ -80,62 +138,9 @@ func (s *UserService) CreateUser(input CreateUserInput) (*UserOutput, error) {
 
 	var output UserOutput
 	err := s.transactor.WithinTransaction(func(repos ports.Repositories) error {
-		existing, err := repos.Person.GetByEmail(input.Email)
-		if err != nil {
-			return err
-		}
-		if existing != nil {
-			return ErrEmailAlreadyExists
-		}
-
-		existingDoc, err := repos.Person.GetByDocument(input.Document)
-		if err != nil {
-			return err
-		}
-		if existingDoc != nil {
-			return ErrDocumentAlreadyExists
-		}
-
-		person := domain.Person{
-			Name:     input.Name,
-			Email:    input.Email,
-			Contact:  input.Contact,
-			Document: input.Document,
-			IsActive: true,
-			Address:  input.Address,
-		}
-		if err := repos.Person.Create(&person); err != nil {
-			return err
-		}
-
-		hash, err := encryption.Hash(input.Password)
-		if err != nil {
-			return err
-		}
-
-		user := domain.User{
-			Password: hash,
-			Role:     input.Role,
-			PersonID: person.ID,
-		}
-		if err := repos.User.Create(&user); err != nil {
-			return err
-		}
-
-		var employee *domain.Employee
-		if input.Role != domain.RoleCustomer {
-			emp := domain.Employee{
-				Position: input.Position,
-				PersonID: person.ID,
-			}
-			if err := repos.Employee.Create(&emp); err != nil {
-				return err
-			}
-			employee = &emp
-		}
-
-		output = UserOutput{User: user, Person: person, Employee: employee}
-		return nil
+		var err error
+		output, err = s.createUserInTx(repos, input)
+		return err
 	})
 	if err != nil {
 		return nil, err

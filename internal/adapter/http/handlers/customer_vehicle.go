@@ -10,6 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const errInvalidCustomerID = "invalid customer id"
+
 type CustomerVehicleHandler struct {
 	uc *usecases.CustomerUseCase
 }
@@ -50,7 +52,7 @@ func handleCVError(c *gin.Context, err error) {
 func (h *CustomerVehicleHandler) List(c *gin.Context) {
 	customerID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid customer id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidCustomerID})
 		return
 	}
 
@@ -82,7 +84,7 @@ func (h *CustomerVehicleHandler) List(c *gin.Context) {
 func (h *CustomerVehicleHandler) Add(c *gin.Context) {
 	customerID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid customer id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidCustomerID})
 		return
 	}
 
@@ -116,7 +118,7 @@ func (h *CustomerVehicleHandler) Add(c *gin.Context) {
 func (h *CustomerVehicleHandler) Remove(c *gin.Context) {
 	customerID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid customer id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": errInvalidCustomerID})
 		return
 	}
 

@@ -18,6 +18,13 @@ import (
 
 func strp(s string) *string { return &s }
 
+func ptrStr(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
 // --- Person ---
 
 func TestPersonToModel_WithAllFields(t *testing.T) {
@@ -43,25 +50,25 @@ func TestPersonToModel_WithAllFields(t *testing.T) {
 	if m.ID != 1 || m.Name != "Alice" || m.Email != "alice@example.com" {
 		t.Error("basic fields mismatch")
 	}
-	if m.Contact == nil || *m.Contact != "11999999999" {
+	if ptrStr(m.Contact) != "11999999999" {
 		t.Error("expected Contact to be set")
 	}
-	if m.Address == nil || *m.Address != "Rua A" {
+	if ptrStr(m.Address) != "Rua A" {
 		t.Error("expected Address to be set")
 	}
-	if m.AddressNumber == nil || *m.AddressNumber != "10" {
+	if ptrStr(m.AddressNumber) != "10" {
 		t.Error("expected AddressNumber to be set")
 	}
-	if m.Neighborhood == nil || *m.Neighborhood != "Centro" {
+	if ptrStr(m.Neighborhood) != "Centro" {
 		t.Error("expected Neighborhood to be set")
 	}
-	if m.City == nil || *m.City != "SP" {
+	if ptrStr(m.City) != "SP" {
 		t.Error("expected City to be set")
 	}
-	if m.Country == nil || *m.Country != "BR" {
+	if ptrStr(m.Country) != "BR" {
 		t.Error("expected Country to be set")
 	}
-	if m.ZipCode == nil || *m.ZipCode != "01001000" {
+	if ptrStr(m.ZipCode) != "01001000" {
 		t.Error("expected ZipCode to be set")
 	}
 }
