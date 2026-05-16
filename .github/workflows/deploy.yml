@@ -1,0 +1,119 @@
+name: Deploy Application to AWS
+
+on:
+  push:
+    branches: [main]
+    # paths:
+    #   - 'cmd/**'
+    #   - 'internal/**'
+    #   - 'pkg/**'
+    #   - 'Dockerfile'
+    #   - '.github/workflows/deploy.yml'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push Docker Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: tech-challenge-users-repo
+          IMAGE_TAG: latest
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Update Kubeconfig
+        run: aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name eks-tech-challenge
+
+      - name: Configure Metrics
+        run: |
+          kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+          kubectl patch -n kube-system deployment metrics-server --type=json \
+          -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+          kubectl wait --namespace kube-system \
+          --for=condition=ready pod \
+          --selector=k8s-app=metrics-server \
+          --timeout=5s || true
+
+      - name: Install AWS Load Balancer Controller
+        run: |
+          VPC_ID=$(aws ec2 describe-vpcs \
+            --filters "Name=tag:Name,Values=eks-tech-challenge-vpc" \
+            --query "Vpcs[0].VpcId" --output text)
+
+          kubectl create secret generic aws-alb-credentials \
+            --from-literal=AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
+            --from-literal=AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
+            --from-literal=AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }} \
+            -n kube-system \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          helm repo add eks https://aws.github.io/eks-charts
+          helm repo update eks
+          helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
+            -n kube-system \
+            --set clusterName=eks-tech-challenge \
+            --set serviceAccount.create=true \
+            --set region=${{ secrets.AWS_REGION }} \
+            --set vpcId=$VPC_ID \
+            --set "envFrom[0].secretRef.name=aws-alb-credentials" \
+            --force \
+            --wait
+
+      - name: Install Datadog Operator
+        env:
+          DD_API_KEY: ${{ secrets.DD_API_KEY }}
+        run: |
+          helm repo add datadog https://helm.datadoghq.com
+          helm repo update datadog
+          helm upgrade --install datadog-operator datadog/datadog-operator
+
+      - name: Definir variáveis de banco (RDS)
+        run: |
+          RDS_ADDRESS=$(aws rds describe-db-instances \
+            --db-instance-identifier tech-challenge-users-db \
+            --query "DBInstances[0].Endpoint.Address" --output text)
+          echo "RDS_ADDRESS=$RDS_ADDRESS" >> $GITHUB_ENV
+
+      - name: Criar Secret do Kubernetes
+        run: |
+          kubectl create secret generic tech-challenge-users-secret \
+            --from-literal=DB_HOST=${RDS_ADDRESS} \
+            --from-literal=DB_PASSWORD=${{ secrets.AWS_RDS_DB_PASSWORD }} \
+            --from-literal=JWT_SECRET=${{ secrets.JWT_SECRET }} \
+            --from-literal=ADMIN_PASSWORD=${{ secrets.USER_ADMIN_PASSWORD }} \
+            --from-literal=ADMIN_EMAIL=${{ secrets.USER_ADMIN_EMAIL }} \
+            --from-literal=ADMIN_DOCUMENT=${{ secrets.ADMIN_DOCUMENT }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Atualizar imagem do deployment
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: tech-challenge-users-repo
+          IMAGE_TAG: latest
+        run: |
+          kubectl set image deployment/tech-challenge-users \
+            api=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Restart deployment
+        run: |
+          kubectl rollout restart deployment tech-challenge-users
