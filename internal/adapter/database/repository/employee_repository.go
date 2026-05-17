@@ -30,6 +30,18 @@ func (r *employeeRepository) Create(employee *domain.Employee) error {
 	return nil
 }
 
+func (r *employeeRepository) FindByID(id int64) (*domain.Employee, error) {
+	var m employeemodel.Model
+	if err := r.db.First(&m, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	e := converters.EmployeeToDomain(m)
+	return &e, nil
+}
+
 func (r *employeeRepository) FindByPersonID(personID int64) (*domain.Employee, error) {
 	var m employeemodel.Model
 	err := r.db.Where("person_id = ?", personID).First(&m).Error
