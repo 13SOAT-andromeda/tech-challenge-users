@@ -15,6 +15,7 @@ type Router struct {
 	vehicleHandler         *handlers.VehicleHandler
 	customerVehicleHandler *handlers.CustomerVehicleHandler
 	companyHandler         *handlers.CompanyHandler
+	employeeHandler        *handlers.EmployeeHandler
 }
 
 func NewRouter(
@@ -24,6 +25,7 @@ func NewRouter(
 	vehicleHandler *handlers.VehicleHandler,
 	customerVehicleHandler *handlers.CustomerVehicleHandler,
 	companyHandler *handlers.CompanyHandler,
+	employeeHandler *handlers.EmployeeHandler,
 ) *Router {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
@@ -36,6 +38,7 @@ func NewRouter(
 		vehicleHandler:         vehicleHandler,
 		customerVehicleHandler: customerVehicleHandler,
 		companyHandler:         companyHandler,
+		employeeHandler:        employeeHandler,
 	}
 }
 
@@ -90,6 +93,10 @@ func (r *Router) setupUsersRoutes(g *gin.RouterGroup) {
 	companies.GET("/:id", r.companyHandler.GetByID)
 	companies.PUT("/:id", r.companyHandler.Update)
 	companies.DELETE("/:id", r.companyHandler.Delete)
+
+	employees := g.Group("/employees")
+	employees.Use(adminOrAttendant)
+	employees.GET("/:id", r.employeeHandler.GetByID)
 
 	// Dynamic :id routes
 	g.POST("", adminOrAttendant, r.userHandler.Create)

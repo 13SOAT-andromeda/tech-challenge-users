@@ -164,6 +164,14 @@ func (m *mockEmployeeRepo) Create(e *domain.Employee) error {
 	m.employees = append(m.employees, &clone)
 	return nil
 }
+func (m *mockEmployeeRepo) FindByID(id int64) (*domain.Employee, error) {
+	for _, e := range m.employees {
+		if e.ID == id {
+			return e, nil
+		}
+	}
+	return nil, nil
+}
 func (m *mockEmployeeRepo) FindByPersonID(pid int64) (*domain.Employee, error) {
 	for _, e := range m.employees {
 		if e.PersonID == pid {

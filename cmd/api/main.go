@@ -41,6 +41,7 @@ func main() {
 	vehicleService := services.NewVehicleService(vehicleRepo)
 	customerUseCase := usecases.NewCustomerUseCase(customerRepo, vehicleRepo, cvRepo)
 	companyService := services.NewCompanyService(companyRepo)
+	employeeService := services.NewEmployeeService(employeeRepo)
 
 	// Bootstrap admin user (idempotent)
 	userService.CreateAdminUser(services.AdminConfig{
@@ -56,9 +57,10 @@ func main() {
 	vehicleHandler := handlers.NewVehicleHandler(vehicleService)
 	customerVehicleHandler := handlers.NewCustomerVehicleHandler(customerUseCase)
 	companyHandler := handlers.NewCompanyHandler(companyService)
+	employeeHandler := handlers.NewEmployeeHandler(employeeService)
 
 	// Router
-	router := httpAdapter.NewRouter(userHandler, internalUserHandler, customerHandler, vehicleHandler, customerVehicleHandler, companyHandler)
+	router := httpAdapter.NewRouter(userHandler, internalUserHandler, customerHandler, vehicleHandler, customerVehicleHandler, companyHandler, employeeHandler)
 	router.Setup()
 
 	addr := ":" + cfg.HTTPPort

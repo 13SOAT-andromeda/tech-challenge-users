@@ -68,5 +68,15 @@ export default function () {
     'vehicles status 200': (r) => r.status === 200,
   });
 
+  // -------- EMPLOYEES --------
+  const employeeRes = http.get(
+    `${BASE_URL}/users/employees/1`,
+    { headers }
+  );
+
+  check(employeeRes, {
+    'employee getById status 200 or 404': (r) => r.status === 200 || r.status === 404,
+  });
+
   sleep(1);
 }
