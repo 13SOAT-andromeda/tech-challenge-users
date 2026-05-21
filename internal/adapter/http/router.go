@@ -48,7 +48,7 @@ func (r *Router) Setup() {
 	internal := r.engine.Group("/internal")
 	r.setupInternalRoutes(internal)
 
-	users := r.engine.Group("/users")
+	users := r.engine.Group("/v1/users")
 	users.Use(middlewares.AuthRequired())
 	r.setupUsersRoutes(users)
 }

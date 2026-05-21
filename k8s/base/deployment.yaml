@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tech-challenge-users
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tech-challenge-users
+  template:
+    metadata:
+      labels:
+        app: tech-challenge-users
+    spec:
+      containers:
+        - name: api
+          image: tech-challenge-users:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: tech-challenge-users-config
+            - secretRef:
+                name: tech-challenge-users-secret
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
