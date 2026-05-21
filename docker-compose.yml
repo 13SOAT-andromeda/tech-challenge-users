@@ -15,6 +15,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - users-net
 
   app:
     build: .
@@ -35,10 +37,53 @@ services:
       ADMIN_PASSWORD: Admin@123
       ADMIN_DOCUMENT: "00000000000"
       ENV: development
+      DD_AGENT_HOST: datadog-agent
+      DD_ENV: ${ENV:-development}
+      DD_SERVICE: ${DD_SERVICE:-tech-challenge-users}
+      DD_VERSION: ${API_VERSION:-v1}
     depends_on:
       db:
         condition: service_healthy
     restart: on-failure
+    networks:
+      - users-net
+
+  datadog-agent:
+    image: gcr.io/datadoghq/agent:latest
+    container_name: users-datadog-agent
+    environment:
+      DD_API_KEY: ${DD_API_KEY}
+      DD_SITE: ${DD_SITE:-datadoghq.com}
+
+      DD_APM_ENABLED: "true"
+      DD_APM_NON_LOCAL_TRAFFIC: "true"
+
+      DD_LOGS_ENABLED: "true"
+      DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL: "true"
+      DD_CONTAINER_EXCLUDE: "name:users-datadog-agent"
+
+      DD_APPSEC_ENABLED: "true"
+      DD_REMOTE_CONFIGURATION_ENABLED: "true"
+      DD_UNIVERSAL_SERVICE_MONITORING_ENABLED: "true"
+
+      DD_PROCESS_CONFIG_PROCESS_COLLECTION_ENABLED: "true"
+
+      DD_DOGSTATSD_NON_LOCAL_TRAFFIC: "true"
+    ports:
+      - "8125:8125/udp"
+      - "8126:8126"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+      - ./datadog/conf.d/http_check.yaml:/etc/datadog-agent/conf.d/http_check.yaml:ro
+    networks:
+      - users-net
 
 volumes:
   usersdb_data:
+
+networks:
+  users-net:
+    name: users-net
+    driver: bridge
