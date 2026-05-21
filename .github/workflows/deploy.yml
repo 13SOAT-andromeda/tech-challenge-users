@@ -105,10 +105,9 @@ jobs:
 
       - name: Generate .env.host
         run: |
-          printf 'DB_HOST=%s\nDB_PORT=5432\nDB_USER=%s\nDB_NAME=%s\nDB_SSLMODE=require\nDB_TIMEZONE=America/Sao_Paulo\nHTTP_PORT=8081\nHTTP_ALLOWED_ORIGINS=*\nENV=production\nDD_SERVICE=tech-challenge-users\nDD_SITE=us5.datadoghq.com\n' \
+          printf 'DB_HOST=%s\nDB_PORT=5432\nDB_USER=%s\nDB_NAME=usersdb\nDB_SSLMODE=require\nDB_TIMEZONE=America/Sao_Paulo\nHTTP_PORT=8081\nHTTP_ALLOWED_ORIGINS=*\nENV=production\nDD_SERVICE=tech-challenge-users\nDD_SITE=us5.datadoghq.com\n' \
             "${{ steps.rds.outputs.endpoint }}" \
             "${{ vars.AWS_RDS_DB_USER }}" \
-            "${{ vars.AWS_RDS_USERS_DB_NAME }}" \
             > k8s/overlays/aws/.env.host
 
       - name: Generate .env.secrets
