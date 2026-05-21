@@ -34,7 +34,7 @@ jobs:
       - name: Build and Push Docker Image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: tech-challenge-users-repo
+          ECR_REPOSITORY: tech-challenge-users-api-repo
           IMAGE_TAG: latest
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
@@ -109,7 +109,7 @@ jobs:
       - name: Atualizar imagem do deployment
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: tech-challenge-users-repo
+          ECR_REPOSITORY: tech-challenge-users-api-repo
           IMAGE_TAG: latest
         run: |
           kubectl set image deployment/tech-challenge-users \
