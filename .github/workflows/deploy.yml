@@ -90,7 +90,7 @@ jobs:
       - name: Definir variáveis de banco (RDS)
         run: |
           RDS_ADDRESS=$(aws rds describe-db-instances \
-            --db-instance-identifier tech-challenge-users-db \
+            --db-instance-identifier usersdb \
             --query "DBInstances[0].Endpoint.Address" --output text)
           echo "RDS_ADDRESS=$RDS_ADDRESS" >> $GITHUB_ENV
 
