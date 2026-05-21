@@ -12,13 +12,13 @@ images:
 
 secretGenerator:
   - name: tech-challenge-users-secret
-    behavior: replace
+    behavior: create
     envs:
       - .env.secrets
 
 configMapGenerator:
   - name: tech-challenge-users-config
-    behavior: merge
+    behavior: create
     envs:
       - .env.host
 
