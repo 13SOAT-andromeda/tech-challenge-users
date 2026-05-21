@@ -1,7 +1,10 @@
 package main
 
 import (
-	"log"
+	"github.com/DataDog/datadog-go/v5/statsd"
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
+	"github.com/DataDog/dd-trace-go/v2/profiler"
+	"go.uber.org/zap"
 
 	"tech-challenge-users/internal/adapter/config"
 	"tech-challenge-users/internal/adapter/database"
@@ -14,15 +17,65 @@ import (
 )
 
 func main() {
+	logger, err := zap.NewProduction()
+	if err != nil {
+		panic("failed to initialize logger: " + err.Error())
+	}
+	defer func() {
+		tracer.Stop()
+		profiler.Stop()
+		_ = logger.Sync()
+	}()
+
+	sugar := logger.Sugar()
+
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		sugar.Fatalf("failed to load config: %v", err)
+	}
+
+	if err = profiler.Start(
+		profiler.WithEnv(cfg.ENV),
+		profiler.WithService(cfg.DDService),
+		profiler.WithVersion(cfg.APIVersion),
+		profiler.WithTags("layer:api"),
+		profiler.WithProfileTypes(
+			profiler.CPUProfile,
+			profiler.HeapProfile,
+		),
+	); err != nil {
+		sugar.Warnf("datadog profiler unavailable: %v", err)
+	}
+
+	if err = tracer.Start(
+		tracer.WithEnv(cfg.ENV),
+		tracer.WithService(cfg.DDService),
+		tracer.WithServiceVersion(cfg.APIVersion),
+	); err != nil {
+		sugar.Fatalf("failed to start datadog tracer: %v", err)
+	}
+
+	if !cfg.DogStatsD.Disabled && cfg.DogStatsD.Addr != "" {
+		statsdClient, errStatsd := statsd.New(cfg.DogStatsD.Addr,
+			statsd.WithNamespace("tech_challenge_users."),
+			statsd.WithTags([]string{
+				"env:" + cfg.ENV,
+				"service:" + cfg.DDService,
+				"version:" + cfg.APIVersion,
+			}),
+		)
+		if errStatsd != nil {
+			sugar.Warnf("dogstatsd unavailable, metrics disabled: %v", errStatsd)
+		} else {
+			defer statsdClient.Close()
+			sugar.Infof("dogstatsd connected: %s", cfg.DogStatsD.Addr)
+		}
 	}
 
 	db := database.Connect(cfg)
 
 	if err := migrations.RunMigrations(db); err != nil {
-		log.Fatalf("failed to run migrations: %v", err)
+		sugar.Fatalf("failed to run migrations: %v", err)
 	}
 
 	// Repositories
@@ -60,13 +113,18 @@ func main() {
 	employeeHandler := handlers.NewEmployeeHandler(employeeService)
 
 	// Router
-	router := httpAdapter.NewRouter(userHandler, internalUserHandler, customerHandler, vehicleHandler, customerVehicleHandler, companyHandler, employeeHandler)
+	router := httpAdapter.NewRouter(
+		logger,
+		cfg.DDService,
+		userHandler, internalUserHandler, customerHandler,
+		vehicleHandler, customerVehicleHandler, companyHandler, employeeHandler,
+	)
 	router.Setup()
 
 	addr := ":" + cfg.HTTPPort
-	log.Printf("starting tech-challenge-users on %s (env=%s)", addr, cfg.ENV)
+	sugar.Infof("starting %s on %s (env=%s)", cfg.DDService, addr, cfg.ENV)
 
 	if err := router.Engine().Run(addr); err != nil {
-		log.Fatalf("server error: %v", err)
+		sugar.Fatalf("server error: %v", err)
 	}
 }

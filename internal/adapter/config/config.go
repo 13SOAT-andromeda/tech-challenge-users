@@ -2,8 +2,14 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"os"
 )
+
+type DogStatsDConfig struct {
+	Addr     string
+	Disabled bool
+}
 
 type Config struct {
 	DBHost     string
@@ -21,13 +27,13 @@ type Config struct {
 	AdminPassword string
 	AdminDocument string
 
-	DDAgentHost string
-	DDService   string
-	DDSite      string
-	DDAPIKey    string
-	APIVersion  string
+	DDService  string
+	DDSite     string
+	DDAPIKey   string
+	APIVersion string
+	ENV        string
 
-	ENV string
+	DogStatsD *DogStatsDConfig
 }
 
 func Load() (*Config, error) {
@@ -41,6 +47,15 @@ func Load() (*Config, error) {
 		if val == "" {
 			return nil, fmt.Errorf("required environment variable %s is not set", key)
 		}
+	}
+
+	// DogStatsD na porta 8125 do mesmo host do Agent. Sem host, métricas desligadas.
+	agentHost := os.Getenv("DD_AGENT_HOST")
+	dogstatsdAddr := ""
+	dogstatsdDisabled := true
+	if agentHost != "" {
+		dogstatsdAddr = net.JoinHostPort(agentHost, "8125")
+		dogstatsdDisabled = false
 	}
 
 	return &Config{
@@ -59,13 +74,16 @@ func Load() (*Config, error) {
 		AdminPassword: os.Getenv("ADMIN_PASSWORD"),
 		AdminDocument: os.Getenv("ADMIN_DOCUMENT"),
 
-		DDAgentHost: getEnvOrDefault("DD_AGENT_HOST", "localhost"),
-		DDService:   getEnvOrDefault("DD_SERVICE", "tech-challenge-users"),
-		DDSite:      getEnvOrDefault("DD_SITE", "datadoghq.com"),
-		DDAPIKey:    os.Getenv("DD_API_KEY"),
-		APIVersion:  getEnvOrDefault("API_VERSION", "v1"),
+		DDService:  getEnvOrDefault("DD_SERVICE", "tech-challenge-users"),
+		DDSite:     getEnvOrDefault("DD_SITE", "datadoghq.com"),
+		DDAPIKey:   os.Getenv("DD_API_KEY"),
+		APIVersion: getEnvOrDefault("API_VERSION", "v1"),
+		ENV:        getEnvOrDefault("ENV", "development"),
 
-		ENV: getEnvOrDefault("ENV", "development"),
+		DogStatsD: &DogStatsDConfig{
+			Addr:     dogstatsdAddr,
+			Disabled: dogstatsdDisabled,
+		},
 	}, nil
 }
 

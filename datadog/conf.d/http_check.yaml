@@ -1,0 +1,6 @@
+init_config:
+
+instances:
+  - name: tech-challenge-users-health
+    url: http://app:8081/health
+    timeout: 5
