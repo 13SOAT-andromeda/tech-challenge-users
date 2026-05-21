@@ -30,11 +30,11 @@ jobs:
       - name: Check RDS instance is available
         run: |
           STATUS=$(aws rds describe-db-instances \
-            --db-instance-identifier "${{ vars.AWS_RDS_USERS_NAME }}" \
+            --db-instance-identifier "usersdb" \
             --query 'DBInstances[0].DBInstanceStatus' \
             --output text 2>/dev/null || echo "NOT_FOUND")
           if [ "$STATUS" != "available" ]; then
-            echo "::error::RDS instance '${{ vars.AWS_RDS_USERS_NAME }}' is not available (status: $STATUS)."
+            echo "::error::RDS instance 'usersdb' is not available (status: $STATUS)."
             exit 1
           fi
 
@@ -98,7 +98,7 @@ jobs:
         id: rds
         run: |
           DB_ENDPOINT=$(aws rds describe-db-instances \
-            --db-instance-identifier "${{ vars.AWS_RDS_USERS_NAME }}" \
+            --db-instance-identifier "usersdb" \
             --query 'DBInstances[0].Endpoint.Address' \
             --output text)
           echo "endpoint=${DB_ENDPOINT}" >> $GITHUB_OUTPUT
