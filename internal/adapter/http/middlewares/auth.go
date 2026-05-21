@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,6 +15,17 @@ const (
 
 func AuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Check for internal S2S token first
+		internalToken := c.GetHeader("X-Internal-Token")
+		expectedToken := os.Getenv("INTERNAL_AUTH_TOKEN")
+		if internalToken != "" && expectedToken != "" && internalToken == expectedToken {
+			c.Set(ContextUserID, "system")
+			c.Set(ContextUserEmail, "system@tech-challenge.internal")
+			c.Set(ContextUserRole, "administrator")
+			c.Next()
+			return
+		}
+
 		userID := c.GetHeader("X-User-Id")
 		if userID == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})

@@ -103,6 +103,7 @@ jobs:
             --from-literal=ADMIN_PASSWORD=${{ secrets.USER_ADMIN_PASSWORD }} \
             --from-literal=ADMIN_EMAIL=${{ secrets.USER_ADMIN_EMAIL }} \
             --from-literal=ADMIN_DOCUMENT=${{ secrets.ADMIN_DOCUMENT }} \
+            --from-literal=INTERNAL_AUTH_TOKEN=${{ secrets.INTERNAL_AUTH_TOKEN }} \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Atualizar imagem do deployment
